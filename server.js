@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static(__dirname));
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 
@@ -31,7 +31,6 @@ if (!data.agents || Object.keys(data.agents).length === 0) {
   saveData(data);
 }
 
-// Simple task processor: marks tasks done after a delay
 function processTasks() {
   const now = Date.now();
   data.tasks.forEach(t => {
@@ -70,7 +69,6 @@ app.post('/api/command', (req, res) => {
   res.json(task);
 });
 
-// Optional LLM hook placeholder
 app.post('/api/llm', async (req, res) => {
   const { prompt } = req.body || {};
   const key = process.env.OPENAI_API_KEY;
@@ -86,6 +84,11 @@ app.post('/api/llm', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Fallback to index.html for SPA routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const port = process.env.PORT || 3000;
