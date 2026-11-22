@@ -1,20 +1,22 @@
 # Office AI
 
 A 3D office map where AI agents work and can be given commands.
-The frontend is a Three.js scene; long-running agent work should run on a server
-so it continues even when your laptop is off.
+Agents persist on the server (data.json) so work continues even when your laptop is off,
+as long as the server host is running.
 
 ## Run locally
 
-Open `index.html` in a browser, or serve the folder with any static server.
+npm install
+npm start
 
-## Structure
+Then open http://localhost:3000
 
-- `index.html` - 3D office scene + command input
-- `src/agent.js` - simple agent state machine (client-side demo)
+## Environment
 
-## Next steps
+OPENAI_API_KEY (optional) - enables LLM replies via /api/llm
 
-- Add a backend (Node/Python) for persistent agents.
-- Connect an LLM API for real agent reasoning.
-- Deploy backend to a cloud host (Vercel, Railway, etc.).
+## Deploy
+
+Deploy the whole folder to a Node host (Railway, Render, Fly.io, etc.).
+Set PORT and OPENAI_API_KEY in the host environment.
+For true 24/7 operation, host the backend on a cloud server (not your laptop).

@@ -7,11 +7,12 @@
 <style>
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0f172a;font-family:system-ui,sans-serif;color:#e2e8f0;}
   #canvas{display:block;width:100%;height:100%;}
-  #ui{position:fixed;top:12px;left:12px;background:rgba(15,23,42,.7);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:360px;}
+  #ui{position:fixed;top:12px;left:12px;background:rgba(15,23,42,.75);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:400px;}
   #ui h1{margin:0 0 6px;font-size:16px;}
   #ui input{width:260px;padding:6px 8px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;}
-  #ui button{padding:6px 10px;border-radius:6px;border:none;background:#3b82f6;color:#fff;cursor:pointer;}
+  #ui button{padding:6px 10px;border-radius:6px;border:none;background:#3b82f6;color:#fff;cursor:pointer;margin-left:4px;}
   #ui small{display:block;margin-top:6px;color:#94a3b8;}
+  #status{margin-top:8px;font-size:12px;color:#cbd5e1;max-height:120px;overflow:auto;}
 </style>
 </head>
 <body>
@@ -20,7 +21,8 @@
   <h1>Office AI</h1>
   <input id="cmd" placeholder="Command an agent, e.g. move agent1 to desk 3" />
   <button id="send">Send</button>
-  <small>Agents run on this page (demo). For 24/7, host backend on a server.</small>
+  <small>Agents persist on server. Run: npm start</small>
+  <div id="status"></div>
 </div>
 <script type="importmap">
 {
@@ -57,13 +59,11 @@ dir.position.set(5, 10, 5);
 dir.castShadow = true;
 scene.add(dir);
 
-// Floor
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// Desks
 const desks = [];
 for (let i = 0; i < 6; i++) {
   const x = (i % 3) * 6 - 6;
@@ -75,7 +75,6 @@ for (let i = 0; i < 6; i++) {
   desks.push({ index: i + 1, pos: new THREE.Vector3(x, 0.8, z) });
 }
 
-// Agents
 const agents = {};
 function makeAgent(name, color) {
   const g = new THREE.Group();
@@ -88,23 +87,45 @@ function makeAgent(name, color) {
   g.add(head);
   g.position.set(0, 0, 0);
   scene.add(g);
-  agents[name] = { group: g, target: g.position.clone(), name };
+  agents[name] = { group: g, target: g.position.clone(), name, status: 'idle' };
   return g;
 }
 makeAgent('agent1', 0x3b82f6);
 makeAgent('agent2', 0x10b981);
 
-// Command handling
-document.getElementById('send').addEventListener('click', () => {
+async function sendCommand() {
   const text = document.getElementById('cmd').value.trim();
   const m = text.match(/move\s+(\w+)\s+to\s+desk\s+(\d+)/i);
   if (m) {
     const a = agents[m[1]];
     const d = desks[parseInt(m[2]) - 1];
-    if (a && d) a.target.copy(d.pos);
+    if (a && d) {
+      a.target.copy(d.pos);
+      try { await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: m[1], command: text }) }); } catch (e) {}
+    }
+  } else {
+    // try LLM
+    try {
+      const r = await fetch('/api/llm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text }) });
+      const d = await r.json();
+      document.getElementById('status').textContent = d.reply || d.error;
+    } catch (e) {}
   }
   document.getElementById('cmd').value = '';
-});
+}
+document.getElementById('send').addEventListener('click', sendCommand);
+document.getElementById('cmd').addEventListener('keydown', e => { if (e.key === 'Enter') sendCommand(); });
+
+async function poll() {
+  try {
+    const r = await fetch('/api/agents');
+    const list = await r.json();
+    const lines = list.map(a => `${a.name}: ${a.status}${a.task ? ' - ' + a.task : ''}`);
+    document.getElementById('status').innerHTML = lines.join('<br>');
+  } catch (e) {}
+}
+setInterval(poll, 2000);
+poll();
 
 const clock = new THREE.Clock();
 function animate() {
