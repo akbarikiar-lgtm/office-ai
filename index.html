@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Office AI - 3D Office</title>
 <style>
-  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#020617;font-family:system-ui,sans-serif;color:#e2e8f0;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#010411;font-family:system-ui,sans-serif;color:#e2e8f0;}
   #canvas{display:block;width:100%;height:100%;}
-  #ui{position:fixed;top:12px;left:12px;background:rgba(2,6,23,.6);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:420px;}
-  #ui h1{margin:0 0 6px;font-size:16px;}
+  #ui{position:fixed;top:12px;left:12px;background:rgba(1,4,17,.6);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:420px;border:1px solid rgba(99,102,241,.3);}
+  #ui h1{margin:0 0 6px;font-size:16px;background:linear-gradient(90deg,#818cf8,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent;}
   #ui input{width:150px;padding:6px 8px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;margin:2px;}
-  #ui button{padding:6px 10px;border-radius:6px;border:none;background:#6366f1;color:#fff;cursor:pointer;margin:2px;}
+  #ui button{padding:6px 10px;border-radius:6px;border:none;background:linear-gradient(90deg,#6366f1,#22d3ee);color:#fff;cursor:pointer;margin:2px;}
   #ui small{display:block;margin-top:6px;color:#94a3b8;font-size:11px;}
   #status{margin-top:8px;font-size:12px;color:#cbd5e1;max-height:140px;overflow:auto;}
   .row{display:flex;flex-wrap:wrap;align-items:center;}
@@ -28,7 +28,7 @@
     <input id="cmd" placeholder="Command, e.g. move agent1 to desk 3" style="width:260px;" />
     <button id="send">Send</button>
   </div>
-  <small>Free LLMs: set GROQ_API_KEY or GEMINI_API_KEY (see README). Agents persist on server.</small>
+  <small>Free LLMs: set GROQ_API_KEY or GEMINI_API_KEY. Agents persist on server. Fancy 3D motion graphics.</small>
   <div id="status"></div>
 </div>
 <script type="importmap">
@@ -54,99 +54,120 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x020617);
-scene.fog = new THREE.Fog(0x020617, 30, 70);
+scene.background = new THREE.Color(0x010411);
+scene.fog = new THREE.Fog(0x010411, 35, 80);
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(16, 14, 16);
+camera.position.set(18, 16, 18);
 
 const controls = new OrbitControls(camera, canvas);
 controls.target.set(0, 0, 0);
 controls.enableDamping = true;
+controls.dampingFactor = 0.06;
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.4, 0.85);
+const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.1, 0.5, 0.8);
 composer.addPass(bloom);
 
-const hemi = new THREE.HemisphereLight(0x818cf8, 0x020617, 0.7);
+// Lighting
+const hemi = new THREE.HemisphereLight(0x818cf8, 0x010411, 0.6);
 scene.add(hemi);
-const dir = new THREE.DirectionalLight(0xffffff, 1.1);
-dir.position.set(6, 12, 6);
+const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+dir.position.set(8, 14, 8);
 dir.castShadow = true;
 dir.shadow.mapSize.set(2048, 2048);
 scene.add(dir);
-const rim = new THREE.PointLight(0x22d3ee, 1.2, 50);
-rim.position.set(-10, 8, -8);
+const rim = new THREE.PointLight(0x22d3ee, 1.5, 60);
+rim.position.set(-12, 10, -10);
 scene.add(rim);
+const rim2 = new THREE.PointLight(0xa855f7, 1.2, 60);
+rim2.position.set(12, 8, 10);
+scene.add(rim2);
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 }));
+// Floor with glow
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(44, 34), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85, metalness: 0.1 }));
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-const grid = new THREE.GridHelper(40, 40, 0x1e293b, 0x0f172a);
+const grid = new THREE.GridHelper(44, 44, 0x312e81, 0x0f172a);
 grid.position.y = 0.01;
 scene.add(grid);
 
-// Pipes (tubes) connecting desks for fancy look
 const desks = [];
 for (let i = 0; i < 6; i++) {
   const x = (i % 3) * 7 - 7;
   const z = Math.floor(i / 3) * 7 - 3.5;
-  const desk = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 1.8), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.3, roughness: 0.5 }));
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 1.8), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.4, roughness: 0.4 }));
   desk.position.set(x, 0.7, z);
   desk.castShadow = true;
   scene.add(desk);
-  const mon = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.05), new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0ea5e9, emissiveIntensity: 0.5 }));
+  const mon = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.05), new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x22d3ee, emissiveIntensity: 0.6 }));
   mon.position.set(x, 1.3, z - 0.3);
   scene.add(mon);
+  // desk lamp (glowing)
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xfde68a, emissiveIntensity: 1.2 }));
+  lamp.position.set(x + 1.2, 1.0, z + 0.5);
+  scene.add(lamp);
+  const pl = new THREE.PointLight(0xfde68a, 0.6, 6);
+  pl.position.copy(lamp.position);
+  scene.add(pl);
   desks.push({ index: i + 1, pos: new THREE.Vector3(x, 0.9, z) });
 }
-// tubes between desks
+// tubes
 for (let i = 0; i < desks.length - 1; i++) {
   const a = desks[i].pos, b = desks[i+1].pos;
   const mid = a.clone().add(b).multiplyScalar(0.5);
   const len = a.distanceTo(b);
-  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, len, 12), new THREE.MeshStandardMaterial({ color: 0x6366f1, emissive: 0x6366f1, emissiveIntensity: 0.3, metalness: 0.6, roughness: 0.3 }));
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, len, 12), new THREE.MeshStandardMaterial({ color: 0x6366f1, emissive: 0x6366f1, emissiveIntensity: 0.4, metalness: 0.7, roughness: 0.2 }));
   tube.position.copy(mid);
   tube.lookAt(b);
   tube.rotateX(Math.PI / 2);
   scene.add(tube);
 }
 
-// Particles
-const pCount = 800;
+// Floating particles
+const pCount = 1200;
 const pGeo = new THREE.BufferGeometry();
 const pPos = new Float32Array(pCount * 3);
+const pCol = new Float32Array(pCount * 3);
 for (let i = 0; i < pCount; i++) {
-  pPos[i * 3] = (Math.random() - 0.5) * 36;
-  pPos[i * 3 + 1] = Math.random() * 10 + 0.5;
-  pPos[i * 3 + 2] = (Math.random() - 0.5) * 24;
+  pPos[i * 3] = (Math.random() - 0.5) * 40;
+  pPos[i * 3 + 1] = Math.random() * 12 + 0.5;
+  pPos[i * 3 + 2] = (Math.random() - 0.5) * 28;
+  const c = new THREE.Color().setHSL(Math.random(), 0.7, 0.6);
+  pCol[i * 3] = c.r; pCol[i * 3 + 1] = c.g; pCol[i * 3 + 2] = c.b;
 }
 pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.05, color: 0xa5b4fc, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending }));
+pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.06, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
 scene.add(particles);
 
 const agents = {};
-const colors = [0x3b82f6, 0x10b981, 0xf59e0b, 0xec4899, 0x8b5cf6, 0x06b6d4];
+const colors = [0x3b82f6, 0x10b981, 0xf59e0b, 0xec4899, 0x8b5cf6, 0x06b6d4, 0xf43f5e, 0x14b8a6];
 let colorIdx = 0;
 function makeAgent(name) {
   const color = colors[colorIdx % colors.length]; colorIdx++;
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2 }));
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25 }));
   body.position.y = 0.9;
   body.castShadow = true;
   g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfde68a }));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xfde68a, emissiveIntensity: 0.15 }));
   head.position.y = 1.6;
   g.add(head);
-  // name label via sprite
+  // glowing ring around agent
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.04, 12, 32), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 }));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.1;
+  g.add(ring);
+  // name label
   const canvas2 = document.createElement('canvas');
   canvas2.width = 256; canvas2.height = 64;
   const ctx = canvas2.getContext('2d');
-  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0,0,256,64);
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 28px system-ui'; ctx.textAlign = 'center'; ctx.fillText(name, 128, 42);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 26px system-ui'; ctx.textAlign = 'center'; ctx.fillText(name, 128, 42);
   const tex = new THREE.CanvasTexture(canvas2);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
   sprite.position.set(0, 2.3, 0);
@@ -154,7 +175,7 @@ function makeAgent(name) {
   g.add(sprite);
   g.position.set(0, 0, 0);
   scene.add(g);
-  agents[name] = { group: g, target: g.position.clone(), name, status: 'idle' };
+  agents[name] = { group: g, target: g.position.clone(), name, status: 'idle', ring };
   return g;
 }
 
@@ -215,14 +236,19 @@ poll();
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
-  particles.rotation.y += 0.001;
+  const t = clock.getElapsedTime();
+  particles.rotation.y = t * 0.03;
+  particles.rotation.x = Math.sin(t * 0.1) * 0.1;
   Object.values(agents).forEach(a => {
     const dir = a.target.clone().sub(a.group.position);
     if (dir.length() > 0.05) {
-      dir.normalize().multiplyScalar(dt * 2.5);
+      dir.normalize().multiplyScalar(clock.getDelta() * 2.5);
       a.group.position.add(dir);
       a.group.lookAt(a.target);
+    }
+    if (a.ring) {
+      a.ring.rotation.z = t * 1.5;
+      a.ring.material.emissiveIntensity = 0.6 + Math.sin(t * 2 + a.group.position.x) * 0.3;
     }
   });
   controls.update();
