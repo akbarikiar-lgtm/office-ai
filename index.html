@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Office AI - 3D Office</title>
 <style>
-  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0f172a;font-family:system-ui,sans-serif;color:#e2e8f0;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#020617;font-family:system-ui,sans-serif;color:#e2e8f0;}
   #canvas{display:block;width:100%;height:100%;}
-  #ui{position:fixed;top:12px;left:12px;background:rgba(15,23,42,.75);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:400px;}
+  #ui{position:fixed;top:12px;left:12px;background:rgba(2,6,23,.6);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:400px;}
   #ui h1{margin:0 0 6px;font-size:16px;}
-  #ui input{width:260px;padding:6px 8px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;}
-  #ui button{padding:6px 10px;border-radius:6px;border:none;background:#3b82f6;color:#fff;cursor:pointer;margin-left:4px;}
-  #ui small{display:block;margin-top:6px;color:#94a3b8;}
+  #ui input{width:260px;padding:6px 8px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;}
+  #ui button{padding:6px 10px;border-radius:6px;border:none;background:#6366f1;color:#fff;cursor:pointer;margin-left:4px;}
+  #ui small{display:block;margin-top:6px;color:#94a3b8;font-size:11px;}
   #status{margin-top:8px;font-size:12px;color:#cbd5e1;max-height:120px;overflow:auto;}
 </style>
 </head>
@@ -21,7 +21,7 @@
   <h1>Office AI</h1>
   <input id="cmd" placeholder="Command an agent, e.g. move agent1 to desk 3" />
   <button id="send">Send</button>
-  <small>Agents persist on server. Run: npm start</small>
+  <small>High-quality 3D office. Agents persist on server. Run: npm start</small>
   <div id="status"></div>
 </div>
 <script type="importmap">
@@ -35,50 +35,86 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 const canvas = document.getElementById('canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0f172a);
+scene.background = new THREE.Color(0x020617);
+scene.fog = new THREE.Fog(0x020617, 25, 60);
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(12, 10, 12);
+camera.position.set(14, 12, 14);
 
 const controls = new OrbitControls(camera, canvas);
 controls.target.set(0, 0, 0);
 controls.enableDamping = true;
 
-const hemi = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.9);
-scene.add(hemi);
-const dir = new THREE.DirectionalLight(0xffffff, 1.0);
-dir.position.set(5, 10, 5);
-dir.castShadow = true;
-scene.add(dir);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.9, 0.4, 0.85);
+composer.addPass(bloom);
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+const hemi = new THREE.HemisphereLight(0x818cf8, 0x020617, 0.7);
+scene.add(hemi);
+const dir = new THREE.DirectionalLight(0xffffff, 1.1);
+dir.position.set(6, 12, 6);
+dir.castShadow = true;
+dir.shadow.mapSize.set(2048, 2048);
+scene.add(dir);
+const rim = new THREE.PointLight(0x22d3ee, 1.2, 40);
+rim.position.set(-8, 6, -6);
+scene.add(rim);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(34, 24), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 }));
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
+// Grid
+const grid = new THREE.GridHelper(34, 34, 0x1e293b, 0x0f172a);
+grid.position.y = 0.01;
+scene.add(grid);
+
 const desks = [];
 for (let i = 0; i < 6; i++) {
-  const x = (i % 3) * 6 - 6;
-  const z = Math.floor(i / 3) * 6 - 3;
-  const desk = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 1.6), new THREE.MeshStandardMaterial({ color: 0x334155 }));
-  desk.position.set(x, 0.6, z);
+  const x = (i % 3) * 7 - 7;
+  const z = Math.floor(i / 3) * 7 - 3.5;
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 1.8), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.2, roughness: 0.6 }));
+  desk.position.set(x, 0.7, z);
   desk.castShadow = true;
   scene.add(desk);
-  desks.push({ index: i + 1, pos: new THREE.Vector3(x, 0.8, z) });
+  // monitor
+  const mon = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.05), new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0ea5e9, emissiveIntensity: 0.4 }));
+  mon.position.set(x, 1.3, z - 0.3);
+  scene.add(mon);
+  desks.push({ index: i + 1, pos: new THREE.Vector3(x, 0.9, z) });
 }
+
+// Particles (motion graphics accent)
+const pCount = 600;
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(pCount * 3);
+for (let i = 0; i < pCount; i++) {
+  pPos[i * 3] = (Math.random() - 0.5) * 30;
+  pPos[i * 3 + 1] = Math.random() * 8 + 0.5;
+  pPos[i * 3 + 2] = (Math.random() - 0.5) * 20;
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.06, color: 0x818cf8, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending }));
+scene.add(particles);
 
 const agents = {};
 function makeAgent(name, color) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color }));
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.15 }));
   body.position.y = 0.9;
   body.castShadow = true;
   g.add(body);
@@ -104,7 +140,6 @@ async function sendCommand() {
       try { await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: m[1], command: text }) }); } catch (e) {}
     }
   } else {
-    // try LLM
     try {
       const r = await fetch('/api/llm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text }) });
       const d = await r.json();
@@ -130,17 +165,18 @@ poll();
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
+  const t = clock.getElapsedTime();
+  particles.rotation.y = t * 0.05;
   Object.values(agents).forEach(a => {
     const dir = a.target.clone().sub(a.group.position);
     if (dir.length() > 0.05) {
-      dir.normalize().multiplyScalar(dt * 2.5);
+      dir.normalize().multiplyScalar(clock.getDelta() * 2.5);
       a.group.position.add(dir);
       a.group.lookAt(a.target);
     }
   });
   controls.update();
-  renderer.render(scene, camera);
+  composer.render();
 }
 animate();
 
@@ -148,6 +184,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
 </body>
