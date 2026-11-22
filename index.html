@@ -7,21 +7,28 @@
 <style>
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#020617;font-family:system-ui,sans-serif;color:#e2e8f0;}
   #canvas{display:block;width:100%;height:100%;}
-  #ui{position:fixed;top:12px;left:12px;background:rgba(2,6,23,.6);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:400px;}
+  #ui{position:fixed;top:12px;left:12px;background:rgba(2,6,23,.6);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:420px;}
   #ui h1{margin:0 0 6px;font-size:16px;}
-  #ui input{width:260px;padding:6px 8px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;}
-  #ui button{padding:6px 10px;border-radius:6px;border:none;background:#6366f1;color:#fff;cursor:pointer;margin-left:4px;}
+  #ui input{width:150px;padding:6px 8px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;margin:2px;}
+  #ui button{padding:6px 10px;border-radius:6px;border:none;background:#6366f1;color:#fff;cursor:pointer;margin:2px;}
   #ui small{display:block;margin-top:6px;color:#94a3b8;font-size:11px;}
-  #status{margin-top:8px;font-size:12px;color:#cbd5e1;max-height:120px;overflow:auto;}
+  #status{margin-top:8px;font-size:12px;color:#cbd5e1;max-height:140px;overflow:auto;}
+  .row{display:flex;flex-wrap:wrap;align-items:center;}
 </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
 <div id="ui">
   <h1>Office AI</h1>
-  <input id="cmd" placeholder="Command an agent, e.g. move agent1 to desk 3" />
-  <button id="send">Send</button>
-  <small>High-quality 3D office. Agents persist on server. Run: npm start</small>
+  <div class="row">
+    <input id="newAgent" placeholder="New agent name" />
+    <button id="addAgent">Add Agent</button>
+  </div>
+  <div class="row">
+    <input id="cmd" placeholder="Command, e.g. move agent1 to desk 3" style="width:260px;" />
+    <button id="send">Send</button>
+  </div>
+  <small>Free LLMs: set GROQ_API_KEY or GEMINI_API_KEY (see README). Agents persist on server.</small>
   <div id="status"></div>
 </div>
 <script type="importmap">
@@ -48,10 +55,10 @@ renderer.shadowMap.enabled = true;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020617);
-scene.fog = new THREE.Fog(0x020617, 25, 60);
+scene.fog = new THREE.Fog(0x020617, 30, 70);
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(14, 12, 14);
+camera.position.set(16, 14, 16);
 
 const controls = new OrbitControls(camera, canvas);
 controls.target.set(0, 0, 0);
@@ -59,7 +66,7 @@ controls.enableDamping = true;
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.9, 0.4, 0.85);
+const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.4, 0.85);
 composer.addPass(bloom);
 
 const hemi = new THREE.HemisphereLight(0x818cf8, 0x020617, 0.7);
@@ -69,65 +76,107 @@ dir.position.set(6, 12, 6);
 dir.castShadow = true;
 dir.shadow.mapSize.set(2048, 2048);
 scene.add(dir);
-const rim = new THREE.PointLight(0x22d3ee, 1.2, 40);
-rim.position.set(-8, 6, -6);
+const rim = new THREE.PointLight(0x22d3ee, 1.2, 50);
+rim.position.set(-10, 8, -8);
 scene.add(rim);
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(34, 24), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 }));
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 }));
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// Grid
-const grid = new THREE.GridHelper(34, 34, 0x1e293b, 0x0f172a);
+const grid = new THREE.GridHelper(40, 40, 0x1e293b, 0x0f172a);
 grid.position.y = 0.01;
 scene.add(grid);
 
+// Pipes (tubes) connecting desks for fancy look
 const desks = [];
 for (let i = 0; i < 6; i++) {
   const x = (i % 3) * 7 - 7;
   const z = Math.floor(i / 3) * 7 - 3.5;
-  const desk = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 1.8), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.2, roughness: 0.6 }));
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 1.8), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.3, roughness: 0.5 }));
   desk.position.set(x, 0.7, z);
   desk.castShadow = true;
   scene.add(desk);
-  // monitor
-  const mon = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.05), new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0ea5e9, emissiveIntensity: 0.4 }));
+  const mon = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.05), new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0ea5e9, emissiveIntensity: 0.5 }));
   mon.position.set(x, 1.3, z - 0.3);
   scene.add(mon);
   desks.push({ index: i + 1, pos: new THREE.Vector3(x, 0.9, z) });
 }
+// tubes between desks
+for (let i = 0; i < desks.length - 1; i++) {
+  const a = desks[i].pos, b = desks[i+1].pos;
+  const mid = a.clone().add(b).multiplyScalar(0.5);
+  const len = a.distanceTo(b);
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, len, 12), new THREE.MeshStandardMaterial({ color: 0x6366f1, emissive: 0x6366f1, emissiveIntensity: 0.3, metalness: 0.6, roughness: 0.3 }));
+  tube.position.copy(mid);
+  tube.lookAt(b);
+  tube.rotateX(Math.PI / 2);
+  scene.add(tube);
+}
 
-// Particles (motion graphics accent)
-const pCount = 600;
+// Particles
+const pCount = 800;
 const pGeo = new THREE.BufferGeometry();
 const pPos = new Float32Array(pCount * 3);
 for (let i = 0; i < pCount; i++) {
-  pPos[i * 3] = (Math.random() - 0.5) * 30;
-  pPos[i * 3 + 1] = Math.random() * 8 + 0.5;
-  pPos[i * 3 + 2] = (Math.random() - 0.5) * 20;
+  pPos[i * 3] = (Math.random() - 0.5) * 36;
+  pPos[i * 3 + 1] = Math.random() * 10 + 0.5;
+  pPos[i * 3 + 2] = (Math.random() - 0.5) * 24;
 }
 pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.06, color: 0x818cf8, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending }));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.05, color: 0xa5b4fc, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending }));
 scene.add(particles);
 
 const agents = {};
-function makeAgent(name, color) {
+const colors = [0x3b82f6, 0x10b981, 0xf59e0b, 0xec4899, 0x8b5cf6, 0x06b6d4];
+let colorIdx = 0;
+function makeAgent(name) {
+  const color = colors[colorIdx % colors.length]; colorIdx++;
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.15 }));
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2 }));
   body.position.y = 0.9;
   body.castShadow = true;
   g.add(body);
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfde68a }));
   head.position.y = 1.6;
   g.add(head);
+  // name label via sprite
+  const canvas2 = document.createElement('canvas');
+  canvas2.width = 256; canvas2.height = 64;
+  const ctx = canvas2.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0,0,256,64);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 28px system-ui'; ctx.textAlign = 'center'; ctx.fillText(name, 128, 42);
+  const tex = new THREE.CanvasTexture(canvas2);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  sprite.position.set(0, 2.3, 0);
+  sprite.scale.set(1.6, 0.4, 1);
+  g.add(sprite);
   g.position.set(0, 0, 0);
   scene.add(g);
   agents[name] = { group: g, target: g.position.clone(), name, status: 'idle' };
   return g;
 }
-makeAgent('agent1', 0x3b82f6);
-makeAgent('agent2', 0x10b981);
+
+async function loadAgents() {
+  try {
+    const r = await fetch('/api/agents');
+    const list = await r.json();
+    list.forEach(a => { if (!agents[a.name]) makeAgent(a.name); });
+  } catch (e) {}
+}
+loadAgents();
+
+document.getElementById('addAgent').addEventListener('click', async () => {
+  const name = document.getElementById('newAgent').value.trim();
+  if (!name) return;
+  try {
+    const r = await fetch('/api/agents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+    const a = await r.json();
+    if (a.name && !agents[a.name]) makeAgent(a.name);
+  } catch (e) {}
+  document.getElementById('newAgent').value = '';
+});
 
 async function sendCommand() {
   const text = document.getElementById('cmd').value.trim();
@@ -143,7 +192,7 @@ async function sendCommand() {
     try {
       const r = await fetch('/api/llm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text }) });
       const d = await r.json();
-      document.getElementById('status').textContent = d.reply || d.error;
+      document.getElementById('status').textContent = (d.provider ? '[' + d.provider + '] ' : '') + (d.reply || d.error);
     } catch (e) {}
   }
   document.getElementById('cmd').value = '';
@@ -157,6 +206,7 @@ async function poll() {
     const list = await r.json();
     const lines = list.map(a => `${a.name}: ${a.status}${a.task ? ' - ' + a.task : ''}`);
     document.getElementById('status').innerHTML = lines.join('<br>');
+    list.forEach(a => { if (!agents[a.name]) makeAgent(a.name); });
   } catch (e) {}
 }
 setInterval(poll, 2000);
@@ -165,12 +215,12 @@ poll();
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
-  const t = clock.getElapsedTime();
-  particles.rotation.y = t * 0.05;
+  const dt = clock.getDelta();
+  particles.rotation.y += 0.001;
   Object.values(agents).forEach(a => {
     const dir = a.target.clone().sub(a.group.position);
     if (dir.length() > 0.05) {
-      dir.normalize().multiplyScalar(clock.getDelta() * 2.5);
+      dir.normalize().multiplyScalar(dt * 2.5);
       a.group.position.add(dir);
       a.group.lookAt(a.target);
     }

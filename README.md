@@ -11,12 +11,18 @@ npm start
 
 Then open http://localhost:3000
 
-## Environment
+## Create agents
 
-OPENAI_API_KEY (optional) - enables LLM replies via /api/llm
+Use the UI to add agents by name. They are stored on the server.
+
+## Free LLM APIs
+
+Set one of these environment variables:
+- GROQ_API_KEY (free tier) - https://console.groq.com
+- GEMINI_API_KEY (free tier) - https://aistudio.google.com
+- OPENAI_API_KEY (paid) - https://platform.openai.com
 
 ## Deploy
 
-Deploy the whole folder to a Node host (Railway, Render, Fly.io, etc.).
-Set PORT and OPENAI_API_KEY in the host environment.
-For true 24/7 operation, host the backend on a cloud server (not your laptop).
+Deploy to a Node host (Railway, Render, Fly.io). Set PORT and an API key.
+For 24/7 operation, host on a cloud server.
