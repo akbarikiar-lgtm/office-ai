@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Office AI - 3D Office</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0f172a;font-family:system-ui,sans-serif;color:#e2e8f0;}
+  #canvas{display:block;width:100%;height:100%;}
+  #ui{position:fixed;top:12px;left:12px;background:rgba(15,23,42,.7);padding:10px 12px;border-radius:10px;backdrop-filter:blur(8px);max-width:360px;}
+  #ui h1{margin:0 0 6px;font-size:16px;}
+  #ui input{width:260px;padding:6px 8px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;}
+  #ui button{padding:6px 10px;border-radius:6px;border:none;background:#3b82f6;color:#fff;cursor:pointer;}
+  #ui small{display:block;margin-top:6px;color:#94a3b8;}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="ui">
+  <h1>Office AI</h1>
+  <input id="cmd" placeholder="Command an agent, e.g. move agent1 to desk 3" />
+  <button id="send">Send</button>
+  <small>Agents run on this page (demo). For 24/7, host backend on a server.</small>
+</div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f172a);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(12, 10, 12);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true;
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.9);
+scene.add(hemi);
+const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+dir.position.set(5, 10, 5);
+dir.castShadow = true;
+scene.add(dir);
+
+// Floor
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Desks
+const desks = [];
+for (let i = 0; i < 6; i++) {
+  const x = (i % 3) * 6 - 6;
+  const z = Math.floor(i / 3) * 6 - 3;
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 1.6), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+  desk.position.set(x, 0.6, z);
+  desk.castShadow = true;
+  scene.add(desk);
+  desks.push({ index: i + 1, pos: new THREE.Vector3(x, 0.8, z) });
+}
+
+// Agents
+const agents = {};
+function makeAgent(name, color) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color }));
+  body.position.y = 0.9;
+  body.castShadow = true;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfde68a }));
+  head.position.y = 1.6;
+  g.add(head);
+  g.position.set(0, 0, 0);
+  scene.add(g);
+  agents[name] = { group: g, target: g.position.clone(), name };
+  return g;
+}
+makeAgent('agent1', 0x3b82f6);
+makeAgent('agent2', 0x10b981);
+
+// Command handling
+document.getElementById('send').addEventListener('click', () => {
+  const text = document.getElementById('cmd').value.trim();
+  const m = text.match(/move\s+(\w+)\s+to\s+desk\s+(\d+)/i);
+  if (m) {
+    const a = agents[m[1]];
+    const d = desks[parseInt(m[2]) - 1];
+    if (a && d) a.target.copy(d.pos);
+  }
+  document.getElementById('cmd').value = '';
+});
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  Object.values(agents).forEach(a => {
+    const dir = a.target.clone().sub(a.group.position);
+    if (dir.length() > 0.05) {
+      dir.normalize().multiplyScalar(dt * 2.5);
+      a.group.position.add(dir);
+      a.group.lookAt(a.target);
+    }
+  });
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
